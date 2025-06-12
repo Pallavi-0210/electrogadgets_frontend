@@ -93,7 +93,7 @@ function CartPage() {
     useEffect(() => {
         const fetchCart = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/cart', { credentials: 'include' });
+                const response = await fetch('https://electrogadgets-backend.onrender.com/api/cart', { credentials: 'include' });
                 if (!response.ok) throw new Error('Failed to fetch cart');
                 const cartData = await response.json();
                 dispatch({ type: 'SET_CART', payload: cartData.cart });
@@ -104,7 +104,7 @@ function CartPage() {
         };
         const fetchSavedItems = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/cart/saved', { credentials: 'include' });
+                const response = await fetch('https://electrogadgets-backend.onrender.com/api/cart/saved', { credentials: 'include' });
                 if (!response.ok) throw new Error('Failed to fetch saved items');
                 const savedData = await response.json();
                 setSavedItems(savedData.savedItems);
