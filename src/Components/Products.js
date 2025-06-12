@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useCart } from './CartPage'; // Import useCart from CartPage
+import { useCart } from './CartPage';
 
 function ProductPage() {
-    // State management for filters and UI
     const [search, setSearch] = useState("");
     const [minPrice, setMinPrice] = useState("");
     const [maxPrice, setMaxPrice] = useState("");
@@ -26,6 +25,7 @@ function ProductPage() {
     const [selectedColor, setSelectedColor] = useState({});
     const [priceRange, setPriceRange] = useState([0, 2000]);
     const [showCompareModal, setShowCompareModal] = useState(false);
+    const [loadingId, setLoadingId] = useState(null);
 
     const { dispatch } = useCart();
 
@@ -48,7 +48,6 @@ function ProductPage() {
     const brands = useMemo(() => ["all", ...new Set(products.map(p => p.brand))], []);
     const maxProductPrice = useMemo(() => Math.max(...products.map(p => p.price)), []);
 
-    // Initialize Bootstrap Toasts
     useEffect(() => {
         const initializeToasts = () => {
             if (window.bootstrap && window.bootstrap.Toast) {
@@ -95,13 +94,19 @@ function ProductPage() {
     };
 
     const handleAddToCart = async (product) => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showNotification("You must be logged in to add items to the cart", "error");
+            return;
+        }
+
         if (product.stock === 0) {
             showNotification("Sorry, this item is out of stock!", "error");
             return;
         }
+
         const selectedQuantity = quantity[product.id] || 1;
         const color = selectedColor[product.id] || product.colors?.[0] || "Default";
-        // Only send required fields to backend
         const item = {
             id: product.id,
             title: product.title,
@@ -109,21 +114,36 @@ function ProductPage() {
             img: product.img,
             quantity: selectedQuantity
         };
+
+        setLoadingId(product.id);
         try {
             const response = await fetch('https://electrogadgets-backend.onrender.com/api/cart', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify(item),
             });
 
-            if (!response.ok) throw new Error('Failed to add item');
-            const updatedCart = await response.json();
-            dispatch({ type: 'SET_CART', payload: updatedCart.cart });
+            const data = await response.json();
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    showNotification("Unauthorized: Please log in again", "error");
+                } else {
+                    showNotification(data.error || 'Failed to add item to cart', 'error');
+                }
+                return;
+            }
+
+            dispatch({ type: 'SET_CART', payload: data.cart });
             showNotification(`${selectedQuantity} x ${product.title} (${color}) added to cart!`, "success");
         } catch (err) {
             console.error('Error adding item:', err);
             showNotification('Failed to add item to cart', 'error');
+        } finally {
+            setLoadingId(null);
         }
         addToRecentlyViewed(product);
     };
@@ -220,6 +240,45 @@ function ProductPage() {
         ))
     );
 
+    const paging = () => {
+        const pageSize = 8;
+        const pageCount = Math.ceil(sortedProducts.length / pageSize);
+        const [currentPage, setCurrentPage] = useState(1);
+        const startIndex = (currentPage - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const currentItems = sortedProducts.slice(startIndex, endIndex);
+    
+        const handlePageChange = (page) => {
+            setCurrentPage(page);
+        };
+    
+        return (
+            <div className="d-flex justify-content-center mt-4">
+                <nav aria-label="Page navigation">
+                    <ul className="pagination">
+                        <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                            <button className="page-link" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
+                                Previous
+                            </button>
+                        </li>
+                        {[...Array(pageCount)].map((_, index) => (
+                            <li key={index} className={`page-item ${currentPage === index + 1 ? 'active' : ''}`}>
+                                <button className="page-link" onClick={() => handlePageChange(index + 1)}>
+                                    {index + 1}
+                                </button>
+                            </li>
+                        ))}
+                        <li className={`page-item ${currentPage === pageCount ? 'disabled' : ''}`}>
+                            <button className="page-link" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === pageCount}>
+                                Next
+                            </button>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        );
+    };
+
     const ProductCard = ({ product, isListView }) => (
         <div className={`col-${isListView ? '12' : 'sm-6 col-md-4 col-lg-3'} mb-4`}>
             <div className={`card h-100 shadow-sm border-0 position-relative ${isListView ? 'flex-row p-3' : ''} ${product.featured ? 'border border-warning' : ''}`}>
@@ -276,7 +335,7 @@ function ProductPage() {
                         </div>
                     </div>
 
-                    <div class Терноп="mb-2">
+                    <div className="mb-2">
                         <div className="d-flex align-items-center gap-2 mb-1">
                             <span className="fw-bold text-primary">${product.price.toFixed(2)}</span>
                             {product.originalPrice && (
@@ -335,10 +394,10 @@ function ProductPage() {
                         <button
                             className={`btn btn-sm flex-fill ${product.stock === 0 ? 'btn-secondary' : product.onSale ? 'btn-danger' : 'btn-success'}`}
                             onClick={() => handleAddToCart(product)}
-                            disabled={product.stock === 0}
+                            disabled={product.stock === 0 || loadingId === product.id}
                         >
                             <i className="bi bi-cart-plus me-1"></i>
-                            {product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                            {loadingId === product.id ? 'Adding...' : product.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
                         </button>
                         <button
                             className="btn btn-outline-primary btn-sm"
@@ -361,7 +420,6 @@ function ProductPage() {
 
     return (
         <div className="flex-grow-1">
-            {/* Hero Section */}
             <div className="bg-gradient-primary text-white text-center py-4 mb-4 position-relative overflow-hidden">
                 <div className="container position-relative z-index-2">
                     <h1 className="display-5 fw-bold mb-2">Premium Electronics Store</h1>
@@ -387,7 +445,6 @@ function ProductPage() {
                 </div>
             </div>
 
-            {/* Filters Section */}
             <div className="container">
                 <div className="card shadow-sm mb-4">
                     <div className="card-header d-flex justify-content-between align-items-center">
@@ -524,7 +581,6 @@ function ProductPage() {
                     </div>
                 </div>
 
-                {/* Sort and View Controls */}
                 <div className="d-flex justify-content-between align-items-center mb-4">
                     <div className="d-flex align-items-center gap-3">
                         <select
@@ -564,7 +620,6 @@ function ProductPage() {
                 </div>
             </div>
 
-            {/* Recently Viewed */}
             {recentlyViewed.length > 0 && (
                 <div className="container mb-4">
                     <div className="card shadow-sm">
@@ -594,7 +649,6 @@ function ProductPage() {
                 </div>
             )}
 
-            {/* Products Grid */}
             <div className="container">
                 <div className="row">
                     {sortedProducts.length > 0 ? (
@@ -614,7 +668,6 @@ function ProductPage() {
                 </div>
             </div>
 
-            {/* Quick View Modal */}
             {quickView && (
                 <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => setQuickView(null)}>
                     <div className="modal-dialog modal-xl" onClick={e => e.stopPropagation()}>
@@ -724,10 +777,10 @@ function ProductPage() {
                                             <button
                                                 className={`btn flex-fill ${quickView.stock === 0 ? 'btn-secondary' : 'btn-success'}`}
                                                 onClick={() => { handleAddToCart(quickView); setQuickView(null); }}
-                                                disabled={quickView.stock === 0}
+                                                disabled={quickView.stock === 0 || loadingId === quickView.id}
                                             >
                                                 <i className="bi bi-cart-plus me-2"></i>
-                                                {quickView.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
+                                                {loadingId === quickView.id ? 'Adding...' : quickView.stock === 0 ? 'Out of Stock' : 'Add to Cart'}
                                             </button>
                                         </div>
                                         <div className="d-flex gap-2">
@@ -759,7 +812,6 @@ function ProductPage() {
                 </div>
             )}
 
-            {/* Compare Modal */}
             {showCompareModal && compare.size > 0 && (
                 <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} onClick={() => setShowCompareModal(false)}>
                     <div className="modal-dialog modal-xl" onClick={e => e.stopPropagation()}>
@@ -855,9 +907,10 @@ function ProductPage() {
                                                                 <button
                                                                     className="btn btn-success btn-sm"
                                                                     onClick={() => handleAddToCart(product)}
-                                                                    disabled={product.stock === 0}
+                                                                    disabled={product.stock === 0 || loadingId === product.id}
                                                                 >
-                                                                    <i className="bi bi-cart-plus me-1"></i>Add to Cart
+                                                                    <i className="bi bi-cart-plus me-1"></i>
+                                                                    {loadingId === product.id ? 'Adding...' : 'Add to Cart'}
                                                                 </button>
                                                                 <button
                                                                     className="btn btn-outline-primary btn-sm"
@@ -890,7 +943,6 @@ function ProductPage() {
                 </div>
             )}
 
-            {/* Toast Notifications */}
             <div className="toast-container position-fixed bottom-0 end-0 p-3" style={{ zIndex: 9999 }}>
                 <div
                     className={`toast align-items-center text-white border-0 ${showToast ? 'show' : ''} ${toastMessage.color || 'bg-success'}`}
@@ -912,7 +964,6 @@ function ProductPage() {
                 </div>
             </div>
 
-            {/* Floating Action Buttons */}
             <div className="position-fixed bottom-0 start-0 p-3" style={{ zIndex: 1000 }}>
                 <div className="d-flex flex-column gap-2">
                     {wishlist.size > 0 && (
@@ -945,7 +996,6 @@ function ProductPage() {
                 </div>
             </div>
 
-            {/* Security & Trust Badges */}
             <div className="container">
                 <div className="card mt-3">
                     <div className="card-body text-center">
@@ -967,7 +1017,6 @@ function ProductPage() {
                 </div>
             </div>
 
-            {/* Custom Styles */}
             <style jsx>{`
                 .bg-gradient-primary {
                     background: linear-gradient(135deg, #007bff, #0056b3);
