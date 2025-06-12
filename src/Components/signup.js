@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 
 function Signup() {
     const [name, setName] = useState('');
@@ -21,21 +21,22 @@ function Signup() {
             const response = await fetch('https://electrogadgets-backend.onrender.com/api/signup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify({ name, email, password })
             });
 
             const data = await response.json();
 
             if (!response.ok) {
-                setError(data.error);
+                setError(data.error || 'Signup failed');
             } else {
-                localStorage.setItem('isLoggedIn', 'true');
+                // ✅ Save token to localStorage
+                localStorage.setItem('token', data.token);
                 setError('');
-                navigate('/'); // or to /Home
+                navigate('/');
             }
 
         } catch (err) {
+            console.error(err);
             setError('Something went wrong. Please try again later.');
         }
     };
@@ -101,10 +102,9 @@ function Signup() {
                 <button type="submit" className="btn btn-success w-100">Sign Up</button>
             </form>
 
-
             <div className="text-center mt-3">
                 <small>
-                    Already have an account? <a href="/">Login here</a>
+                    Already have an account? <Link to="/">Login here</Link>
                 </small>
             </div>
         </div>
