@@ -170,114 +170,121 @@ function CartPage() {
         ));
     };
 
-    const addItem = async (item) => {
-        try {
-            const response = await fetch('https://electrogadgets-backend.onrender.com/api/cart', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify(item),
-            });
-            if (!response.ok) throw new Error('Failed to add item');
-            const updatedCart = await response.json();
-            dispatch({ type: 'SET_CART', payload: updatedCart.cart });
-            showToastMessage(updatedCart.message, 'success');
-        } catch (err) {
-            console.error('Error adding item:', err);
-            showToastMessage('Failed to add item', 'error');
-        }
-    };
+   const addItem = async (item) => {
+    try {
+        const response = await fetch('https://electrogadgets-backend.onrender.com/api/cart', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(item),
+        });
+        if (!response.ok) throw new Error('Failed to add item');
+        const updatedCart = await response.json();
+        dispatch({ type: 'SET_CART', payload: updatedCart.cart });
+        showToastMessage(updatedCart.message, 'success');
+    } catch (err) {
+        console.error('Error adding item:', err);
+        showToastMessage('Failed to add item', 'error');
+    }
+};
 
+const updateQuantity = async (id, quantity) => {
+    try {
+        const response = await fetch(`https://electrogadgets-backend.onrender.com/api/cart/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ quantity }),
+        });
+        if (!response.ok) throw new Error('Failed to update quantity');
+        const updatedCart = await response.json();
+        dispatch({ type: 'SET_CART', payload: updatedCart.cart });
+        showToastMessage(updatedCart.message, 'success');
+    } catch (err) {
+        console.error('Error updating quantity:', err);
+        showToastMessage('Failed to update quantity', 'error');
+    }
+};
 
-    const updateQuantity = async (id, quantity) => {
-        try {
-            const response = await fetch(`https://electrogadgets-backend.onrender.com/api/cart/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ quantity }),
-            });
-            if (!response.ok) throw new Error('Failed to update quantity');
-            const updatedCart = await response.json();
-            dispatch({ type: 'SET_CART', payload: updatedCart.cart });
-            showToastMessage(updatedCart.message, 'success');
-        } catch (err) {
-            console.error('Error updating quantity:', err);
-            showToastMessage('Failed to update quantity', 'error');
-        }
-    };
+const removeItem = async (id, title = '') => {
+    try {
+        const response = await fetch(`https://electrogadgets-backend.onrender.com/api/cart/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        if (!response.ok) throw new Error('Failed to remove item');
+        const updatedCart = await response.json();
+        dispatch({ type: 'SET_CART', payload: updatedCart.cart });
+        showToastMessage(updatedCart.message || `${title} removed from cart`, 'info');
+    } catch (err) {
+        console.error('Error removing item:', err);
+        showToastMessage('Failed to remove item', 'error');
+    }
+};
 
+const saveForLater = async (item) => {
+    try {
+        const response = await fetch('https://electrogadgets-backend.onrender.com/api/cart/save', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify(item),
+        });
+        if (!response.ok) throw new Error('Failed to save item');
+        const updatedSaved = await response.json();
+        setSavedItems(updatedSaved.savedItems);
+        await removeItem(item.id);
+        showToastMessage(`${item.title} saved for later`, 'info');
+    } catch (err) {
+        console.error('Error saving item:', err);
+        showToastMessage('Failed to save item', 'error');
+    }
+};
 
-    const removeItem = async (id, title = '') => {
-        try {
-            const response = await fetch(`https://electrogadgets-backend.onrender.com/api/cart/${id}`, {
-                method: 'DELETE',
-                credentials: 'include',
-            });
-            if (!response.ok) throw new Error('Failed to remove item');
-            const updatedCart = await response.json();
-            dispatch({ type: 'SET_CART', payload: updatedCart.cart });
-            showToastMessage(updatedCart.message || `${title} removed from cart`, 'info');
-        } catch (err) {
-            console.error('Error removing item:', err);
-            showToastMessage('Failed to remove item', 'error');
-        }
-    };
+const moveToCart = async (item) => {
+    await addItem({ ...item, quantity: 1 });
+    try {
+        const response = await fetch(`https://electrogadgets-backend.onrender.com/api/cart/save/${item.id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        if (!response.ok) throw new Error('Failed to remove saved item');
+        const updatedSaved = await response.json();
+        setSavedItems(updatedSaved.savedItems);
+        showToastMessage(`${item.title} moved to cart`, 'success');
+    } catch (err) {
+        console.error('Error moving item to cart:', err);
+        showToastMessage('Failed to move item to cart', 'error');
+    }
+};
 
-
-    const saveForLater = async (item) => {
-        try {
-            const response = await fetch('https://electrogadgets-backend.onrender.com/api/cart/save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify(item),
-            });
-            if (!response.ok) throw new Error('Failed to save item');
-            const updatedSaved = await response.json();
-            setSavedItems(updatedSaved.savedItems);
-            await removeItem(item.id); // No toast here to avoid duplicate messages
-            showToastMessage(`${item.title} saved for later`, 'info');
-        } catch (err) {
-            console.error('Error saving item:', err);
-            showToastMessage('Failed to save item', 'error');
-        }
-    };
-
-
-    const moveToCart = async (item) => {
-        await addItem({ ...item, quantity: 1 });
-        try {
-            const response = await fetch(`https://electrogadgets-backend.onrender.com/api/cart/save/${item.id}`, {
-                method: 'DELETE',
-                credentials: 'include',
-            });
-            if (!response.ok) throw new Error('Failed to remove saved item');
-            const updatedSaved = await response.json();
-            setSavedItems(updatedSaved.savedItems);
-            showToastMessage(`${item.title} moved to cart`, 'success');
-        } catch (err) {
-            console.error('Error moving item to cart:', err);
-            showToastMessage('Failed to move item to cart', 'error');
-        }
-    };
-
-
-    const clearCart = async () => {
-        try {
-            const response = await fetch('https://electrogadgets-backend.onrender.com/api/cart', {
-                method: 'DELETE',
-                credentials: 'include',
-            });
-            if (!response.ok) throw new Error('Failed to clear cart');
-            const result = await response.json();
-            dispatch({ type: 'CLEAR_CART' });
-            showToastMessage(result.message, 'info');
-        } catch (err) {
-            console.error('Error clearing cart:', err);
-            showToastMessage('Failed to clear cart', 'error');
-        }
-    };
+const clearCart = async () => {
+    try {
+        const response = await fetch('https://electrogadgets-backend.onrender.com/api/cart', {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+        if (!response.ok) throw new Error('Failed to clear cart');
+        const result = await response.json();
+        dispatch({ type: 'CLEAR_CART' });
+        showToastMessage(result.message, 'info');
+    } catch (err) {
+        console.error('Error clearing cart:', err);
+        showToastMessage('Failed to clear cart', 'error');
+    }
+};
 
 
     const calculateSubtotal = () => {
