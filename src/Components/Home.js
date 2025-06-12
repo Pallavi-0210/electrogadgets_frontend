@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useCart } from './CartPage'; // Adjusted path: now importing useCart from CartPage.js
+import { useCart } from './CartPage';
 
 function Home() {
     const [search, setSearch] = useState("");
@@ -13,14 +13,13 @@ function Home() {
     const [toastMessage, setToastMessage] = useState("");
     const [wishlist, setWishlist] = useState(new Set());
     const [compareList, setCompareList] = useState([]);
-    const [viewMode, setViewMode] = useState("grid"); // grid or list
+    const [viewMode, setViewMode] = useState("grid");
     const [showQuickView, setShowQuickView] = useState(null);
     const [featuredOnly, setFeaturedOnly] = useState(false);
+    const [loadingId, setLoadingId] = useState(null); // Added for loading state
 
-    // Access the dispatch function from the cart context
     const { dispatch } = useCart();
 
-    // Effect to initialize Bootstrap Toasts
     useEffect(() => {
         const initializeToasts = () => {
             if (window.bootstrap && window.bootstrap.Toast) {
@@ -126,7 +125,6 @@ function Home() {
         }
     ];
 
-    // Enhanced filtering and sorting logic
     const getFilteredAndSortedGadgets = () => {
         let filtered = gadgets.filter(gadget => {
             const matchesSearch = gadget.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -139,7 +137,6 @@ function Home() {
             return matchesSearch && matchesRating && matchesCategory && matchesPrice && matchesFeatured;
         });
 
-        // Sort the filtered results
         filtered.sort((a, b) => {
             switch (sortBy) {
                 case "price-low":
@@ -183,28 +180,51 @@ function Home() {
             return;
         }
 
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showToastMessage("You must be logged in to add items to the cart", "error");
+            return;
+        }
+
         const selectedQuantity = quantity[gadget.id] || 1;
+        setLoadingId(gadget.id);
 
         try {
             const response = await fetch('https://electrogadgets-backend.onrender.com/api/cart', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ ...gadget, quantity: selectedQuantity }),
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    id: gadget.id,
+                    title: gadget.title,
+                    price: getDiscountedPrice(gadget.price, gadget.discount),
+                    img: gadget.img,
+                    quantity: selectedQuantity
+                }),
             });
 
-            if (!response.ok) throw new Error('Failed to add item');
+            const data = await response.json();
 
-            const updatedCart = await response.json();
-            dispatch({ type: 'SET_CART', payload: updatedCart.cart });
+            if (!response.ok) {
+                if (response.status === 401) {
+                    showToastMessage("Unauthorized: Please log in again", "error");
+                } else {
+                    showToastMessage(data.error || 'Failed to add item to cart', 'error');
+                }
+                return;
+            }
 
+            dispatch({ type: 'SET_CART', payload: data.cart });
             showToastMessage(`${selectedQuantity} x ${gadget.title} added to cart!`, "success");
         } catch (err) {
             console.error('Error adding to cart:', err);
-            showToastMessage("Failed to add item to cart.", "error");
+            showToastMessage('Failed to add item to cart', 'error');
+        } finally {
+            setLoadingId(null);
         }
     };
-
 
     const toggleWishlist = (gadgetId) => {
         setWishlist(prev => {
@@ -314,9 +334,9 @@ function Home() {
                                                 handleAddToCart(gadget);
                                                 setShowQuickView(null);
                                             }}
-                                            disabled={!gadget.inStock}
+                                            disabled={!gadget.inStock || loadingId === gadget.id}
                                         >
-                                            {gadget.inStock ? 'Add to Cart' : 'Out of Stock'}
+                                            {loadingId === gadget.id ? 'Adding...' : gadget.inStock ? 'Add to Cart' : 'Out of Stock'}
                                         </button>
                                         <button
                                             className="btn btn-outline-danger"
@@ -336,7 +356,6 @@ function Home() {
 
     return (
         <div className="flex-grow-1">
-            {/* Enhanced Hero Section */}
             <div className="bg-gradient-primary text-white text-center py-5 mb-4 position-relative overflow-hidden">
                 <div className="container position-relative z-index-2">
                     <h1 className="display-4 fw-bold mb-3">Welcome to ElectroGadgets</h1>
@@ -363,7 +382,6 @@ function Home() {
                 </div>
             </div>
 
-            {/* Category Navigation */}
             <div className="container mb-4">
                 <div className="d-flex flex-wrap gap-2 justify-content-center">
                     {categories.map(category => (
@@ -379,7 +397,6 @@ function Home() {
                 </div>
             </div>
 
-            {/* Advanced Filters & Controls */}
             <div className="container mb-4">
                 <div className="card">
                     <div className="card-body">
@@ -467,7 +484,6 @@ function Home() {
                 </div>
             </div>
 
-            {/* Results Info & Compare Bar */}
             <div className="container mb-3">
                 <div className="d-flex justify-content-between align-items-center">
                     <span className="text-muted">
@@ -490,7 +506,6 @@ function Home() {
                 </div>
             </div>
 
-            {/* Product Grid/List */}
             <div className="container-fluid px-5">
                 <div className={viewMode === 'grid' ? 'row g-4' : ''}>
                     {filteredGadgets.length > 0 ? (
@@ -552,9 +567,9 @@ function Home() {
                                                             <button
                                                                 className="btn btn-success btn-sm flex-grow-1"
                                                                 onClick={() => handleAddToCart(gadget)}
-                                                                disabled={!gadget.inStock}
+                                                                disabled={!gadget.inStock || loadingId === gadget.id}
                                                             >
-                                                                Add to Cart
+                                                                {loadingId === gadget.id ? 'Adding...' : 'Add to Cart'}
                                                             </button>
                                                         </div>
                                                         <div className="d-flex gap-1">
@@ -655,10 +670,9 @@ function Home() {
                                                 <button
                                                     className="btn btn-success btn-sm flex-grow-1"
                                                     onClick={() => handleAddToCart(gadget)}
-                                                    disabled={!gadget.inStock}
+                                                    disabled={!gadget.inStock || loadingId === gadget.id}
                                                 >
-                                                    <i className="bi bi-cart-plus me-1"></i>
-                                                    Add
+                                                    {loadingId === gadget.id ? 'Adding...' : <><i className="bi bi-cart-plus me-1"></i>Add</>}
                                                 </button>
                                             </div>
 
@@ -691,10 +705,8 @@ function Home() {
                 </div>
             </div>
 
-            {/* Quick View Modal */}
             {showQuickView && <QuickViewModal gadget={showQuickView} />}
 
-            {/* Enhanced Toast Container */}
             <div className="toast-container position-fixed bottom-0 end-0 p-3">
                 <div className={`toast align-items-center text-white border-0 ${showToast ? 'show' : ''} ${toastMessage.color || 'bg-success'}`} role="alert" aria-live="assertive" aria-atomic="true">
                     <div className="d-flex">
@@ -711,7 +723,6 @@ function Home() {
                 </div>
             </div>
 
-            {/* Stats/Features Section */}
             <div className="bg-light py-5 mt-5">
                 <div className="container">
                     <div className="row text-center">
@@ -755,7 +766,6 @@ function Home() {
                 </div>
             </div>
 
-            {/* Newsletter Signup */}
             <div className="bg-primary text-white py-4">
                 <div className="container">
                     <div className="row align-items-center">
@@ -779,7 +789,6 @@ function Home() {
                 </div>
             </div>
 
-            {/* Floating Action Buttons */}
             <div className="position-fixed bottom-0 start-0 p-3 d-flex flex-column gap-2" style={{ zIndex: 1000 }}>
                 {wishlist.size > 0 && (
                     <button className="btn btn-danger rounded-circle shadow position-relative" style={{ width: '50px', height: '50px' }}>
@@ -798,7 +807,6 @@ function Home() {
                 </button>
             </div>
 
-            {/* Custom Styles */}
             <style jsx>{`
                 .bg-gradient-primary {
                     background: linear-gradient(135deg, #007bff, #0056b3);
