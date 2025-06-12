@@ -191,7 +191,7 @@ function ProductPage() {
         setOnSale(false);
         setFreeShipping(false);
         setPriceRange([0, maxProductPrice]);
-        setCurrentPage(1); // Reset to first page when filters are cleared
+        setCurrentPage(1); // Reset to first page
         showNotification("All filters cleared", "info");
     };
 
@@ -239,8 +239,10 @@ function ProductPage() {
     const currentItems = sortedProducts.slice(startIndex, endIndex);
 
     const handlePageChange = (page) => {
-        setCurrentPage(page);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (page >= 1 && page <= pageCount) {
+            setCurrentPage(page);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
     };
 
     const renderStars = (count, interactive = false, onRate = null) => (
@@ -641,7 +643,6 @@ function ProductPage() {
                     )}
                 </div>
 
-                {/* Pagination Controls */}
                 {pageCount > 1 && (
                     <div className="d-flex justify-content-center mt-4">
                         <nav aria-label="Page navigation">
@@ -970,7 +971,7 @@ function ProductPage() {
                     {wishlist.size > 0 && (
                         <button className="btn btn-danger rounded-circle position-relative" style={{ width: '50px', height: '50px' }}>
                             <i className="bi bi-heart-fill"></i>
-                            <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-white text-dark">
+                            <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark">
                                 {wishlist.size}
                             </span>
                         </button>
@@ -982,7 +983,7 @@ function ProductPage() {
                             onClick={() => setShowCompareModal(true)}
                         >
                             <i className="bi bi-arrow-left-right"></i>
-                            <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-white text-dark">
+                            <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark">
                                 {compare.size}
                             </span>
                         </button>
@@ -1006,7 +1007,7 @@ function ProductPage() {
                                 <small>Secure Payment</small>
                             </div>
                             <div className="col-4">
-                                <i className="bi bi-truck text-primary mb-1 d-block"></i>
+                                <i className="bi bi-truck text-primary mb-2 d-block"></i>
                                 <small>Fast Shipping</small>
                             </div>
                             <div className="col-4">
@@ -1024,8 +1025,8 @@ function ProductPage() {
                 }
                 .bg-pattern {
                     background-image: 
-                        radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 0%, transparent 25%),
-                        radial-gradient(circle at 75% 75%, rgba(255,255,255,0.1) 0%, transparent 25%);
+                        radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 75% 75%, rgba(255,255,255,0.1) 0%, transparent 50%);
                 }
                 .card:hover {
                     transform: translateY(-2px);
@@ -1037,7 +1038,10 @@ function ProductPage() {
                 .z-index-2 {
                     z-index: 2;
                 }
-                .form-check-label, .cursor-pointer {
+                .form-check-label {
+                    cursor: pointer;
+                }
+                .cursor-pointer {
                     cursor: pointer;
                 }
                 .pagination .page-link {
