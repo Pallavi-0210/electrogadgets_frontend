@@ -4,7 +4,6 @@ import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { CreditCard, Smartphone, Wallet, Building2, QrCode, DollarSign, Truck } from 'lucide-react';
 
 const PaymentPage = () => {
-  // Use useLocation to get the state passed from the CartPage
   const stripe = useStripe();
   const elements = useElements();
   const { state } = useLocation();
@@ -19,7 +18,6 @@ const PaymentPage = () => {
     phoneNumber: '', deliveryAddress: '', deliveryPhone: '', deliveryNotes: ''
   });
 
-  // This 'total' variable correctly calculates the final amount.
   const total = (subtotal + tax + (selectedMethod === 'cod' ? codFee : 0)).toFixed(2);
 
   const paymentMethods = [
@@ -42,7 +40,6 @@ const PaymentPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Handle different payment methods
     switch (selectedMethod) {
       case 'card':
         await handleStripePayment();
@@ -82,13 +79,18 @@ const PaymentPage = () => {
       return;
     }
 
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert("You must be logged in to complete the payment");
+      return;
+    }
+
     const cardElement = elements.getElement(CardElement);
     if (!cardElement) {
       alert('Card element not found');
       return;
     }
 
-    // Create payment method
     const { error, paymentMethod } = await stripe.createPaymentMethod({
       type: 'card',
       card: cardElement,
@@ -103,33 +105,36 @@ const PaymentPage = () => {
     }
 
     try {
-      // Convert total to cents for Stripe (Stripe expects amounts in cents)
       const amountInCents = Math.round(parseFloat(total) * 100);
 
       const response = await fetch('https://electrogadgets-backend.onrender.com/api/create-payment-intent', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           payment_method_id: paymentMethod.id,
-          amount: amountInCents, // Use actual cart total
-          currency: 'usd', // Add currency
+          amount: amountInCents,
+          currency: 'usd',
           email: formData.email,
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-
       const paymentResult = await response.json();
 
-      if (paymentResult.error) {
-        alert(paymentResult.error);
-      } else if (paymentResult.success) {
+      if (!response.ok) {
+        if (response.status === 401) {
+          alert("Unauthorized: Please log in again");
+        } else {
+          alert(paymentResult.error || 'Failed to process payment');
+        }
+        return;
+      }
+
+      if (paymentResult.success) {
         alert('Payment successful!');
-        // Redirect to success page or clear cart
       } else if (paymentResult.requires_action) {
-        // Handle 3D Secure / OTP step
         const result = await stripe.confirmCardPayment(paymentResult.payment_intent_client_secret, {
           payment_method: {
             card: cardElement,
@@ -144,7 +149,6 @@ const PaymentPage = () => {
           alert(result.error.message);
         } else if (result.paymentIntent.status === 'succeeded') {
           alert('Payment succeeded after authentication!');
-          // Redirect to success page
         }
       } else {
         alert('Something went wrong with the payment');
@@ -155,40 +159,32 @@ const PaymentPage = () => {
     }
   };
 
-  // Placeholder functions for other payment methods
   const handlePayPalPayment = async () => {
     alert('Redirecting to PayPal...');
-    // Implement PayPal integration
   };
 
   const handleApplePayment = async () => {
     alert('Opening Apple Pay...');
-    // Implement Apple Pay integration
   };
 
   const handleGooglePayment = async () => {
     alert('Opening Google Pay...');
-    // Implement Google Pay integration
   };
 
   const handleCryptoPayment = async () => {
     alert('Generating crypto payment QR code...');
-    // Implement crypto payment
   };
 
   const handleBankTransfer = async () => {
     alert('Processing bank transfer...');
-    // Implement bank transfer
   };
 
   const handleKlarnaPayment = async () => {
     alert('Redirecting to Klarna...');
-    // Implement Klarna integration
   };
 
   const handleAfterpayPayment = async () => {
     alert('Redirecting to Afterpay...');
-    // Implement Afterpay integration
   };
 
   const handleCODOrder = async () => {
@@ -197,11 +193,19 @@ const PaymentPage = () => {
       return;
     }
 
+    const token = localStorage.getItem('token');
+    if (!token) {
+      alert("You must be logged in to place a COD order");
+      return;
+    }
+
     try {
-      // Send COD order to your backend
       const response = await fetch('https://electrogadgets-backend.onrender.com/api/create-cod-order', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           email: formData.email,
           deliveryAddress: formData.deliveryAddress,
@@ -216,9 +220,17 @@ const PaymentPage = () => {
 
       const result = await response.json();
 
+      if (!response.ok) {
+        if (response.status === 401) {
+          alert("Unauthorized: Please log in again");
+        } else {
+          alert(result.error || 'Failed to place COD order');
+        }
+        return;
+      }
+
       if (result.success) {
         alert(`COD Order placed successfully! Order ID: ${result.orderId}`);
-        // Redirect to order confirmation page
       } else {
         alert('Failed to place COD order. Please try again.');
       }
@@ -227,8 +239,6 @@ const PaymentPage = () => {
       alert('Failed to place order. Please try again.');
     }
   };
-
-  // Add amount here
 
   return (
     <>
@@ -253,7 +263,6 @@ const PaymentPage = () => {
               )}
               <div className="summary-item total">
                 <span>Total</span>
-                {/* CORRECTED: Used the 'total' variable instead of the undefined 'totalAmount' */}
                 <span>${total}</span>
               </div>
             </div>
@@ -304,7 +313,6 @@ const PaymentPage = () => {
                   </div>
                 </div>
               )}
-
 
               {selectedMethod === 'paypal' && (
                 <div className="paypal-form">
@@ -400,7 +408,6 @@ const PaymentPage = () => {
                   <div className="bnpl-info">
                     <h4>Pay in 4 installments of ${(total / 4).toFixed(2)}</h4>
                     <div className="installments">
-                      {/* Dynamic installment calculation */}
                       <span>Today: <strong>${(total / 4).toFixed(2)}</strong></span>
                       <span>In 2 weeks: <strong>${(total / 4).toFixed(2)}</strong></span>
                       <span>In 4 weeks: <strong>${(total / 4).toFixed(2)}</strong></span>
@@ -475,7 +482,6 @@ const PaymentPage = () => {
             </div>
 
             <button type="button" onClick={handleSubmit} className="pay-button">
-              {/* CORRECTED: Used 'total' here for the button text */}
               {selectedMethod === 'cod'
                 ? `Place Order - $${total}`
                 : `Complete Payment - $${total}`}
@@ -806,6 +812,5 @@ const PaymentPage = () => {
     </>
   );
 };
-
 
 export default PaymentPage;
