@@ -21,6 +21,7 @@ function Signup() {
             const response = await fetch('https://electrogadgets-backend.onrender.com/api/signup', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ name, email, password })
             });
 
