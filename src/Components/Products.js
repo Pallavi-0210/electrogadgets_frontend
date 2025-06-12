@@ -26,10 +26,13 @@ function ProductPage() {
     const [priceRange, setPriceRange] = useState([0, 2000]);
     const [showCompareModal, setShowCompareModal] = useState(false);
     const [loadingId, setLoadingId] = useState(null);
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const pageSize = 8;
 
     const { dispatch } = useCart();
 
-    const products = [
+    const products = useMemo(() => [
         { id: 1, title: "iPhone 14 Pro Max", description: "Latest Apple smartphone with A16 chip", img: "/1st.jpg", price: 1099.99, originalPrice: 1199.99, rating: 5, reviews: 2534, category: "mobile", brand: "Apple", stock: 15, colors: ["Space Black", "Deep Purple", "Gold"], onSale: true, freeShipping: true, featured: true },
         { id: 2, title: "Apple Watch Ultra", description: "Most rugged Apple Watch ever made", img: "/2nd.jpg", price: 799.99, rating: 5, reviews: 892, category: "wearable", brand: "Apple", stock: 8, colors: ["Titanium", "Orange"], freeShipping: true },
         { id: 3, title: "AirPods Pro 2", description: "Active noise cancellation reimagined", img: "/3rd.jpg", price: 249.99, originalPrice: 299.99, rating: 5, reviews: 4521, category: "audio", brand: "Apple", stock: 25, onSale: true, freeShipping: true },
@@ -42,7 +45,7 @@ function ProductPage() {
         { id: 10, title: "iPad Pro M2", description: "The ultimate iPad experience", img: "/2nd.jpg", price: 1099.99, rating: 5, reviews: 1892, category: "tablet", brand: "Apple", stock: 14, colors: ["Space Gray", "Silver"], freeShipping: true },
         { id: 11, title: "Surface Laptop 5", description: "Style and speed for everyday multitasking", img: "/3rd.jpg", price: 999.99, originalPrice: 1199.99, rating: 4, reviews: 743, category: "computer", brand: "Microsoft", stock: 9, colors: ["Platinum", "Black"], onSale: true, freeShipping: true },
         { id: 12, title: "Nintendo Switch OLED", description: "Play at home or on the go", img: "/4th.jpg", price: 349.99, rating: 5, reviews: 8234, category: "gaming", brand: "Nintendo", stock: 0, colors: ["Neon", "White"], freeShipping: false }
-    ];
+    ], []);
 
     const categories = useMemo(() => ["all", ...new Set(products.map(p => p.category))], []);
     const brands = useMemo(() => ["all", ...new Set(products.map(p => p.brand))], []);
@@ -52,9 +55,7 @@ function ProductPage() {
         const initializeToasts = () => {
             if (window.bootstrap && window.bootstrap.Toast) {
                 const toastElList = [].slice.call(document.querySelectorAll('.toast'));
-                toastElList.map(function (toastEl) {
-                    return new window.bootstrap.Toast(toastEl);
-                });
+                toastElList.forEach(toastEl => new window.bootstrap.Toast(toastEl));
             } else {
                 setTimeout(initializeToasts, 100);
             }
@@ -190,6 +191,7 @@ function ProductPage() {
         setOnSale(false);
         setFreeShipping(false);
         setPriceRange([0, maxProductPrice]);
+        setCurrentPage(1); // Reset to first page when filters are cleared
         showNotification("All filters cleared", "info");
     };
 
@@ -211,7 +213,7 @@ function ProductPage() {
             return matchesSearch && matchesPrice && matchesCategory && matchesBrand &&
                 matchesRating && matchesStock && matchesSale && matchesShipping;
         });
-    }, [search, minPrice, maxPrice, priceRange, category, brand, rating, inStock, onSale, freeShipping]);
+    }, [products, search, minPrice, maxPrice, priceRange, category, brand, rating, inStock, onSale, freeShipping]);
 
     const sortedProducts = useMemo(() => {
         const sorted = [...filteredProducts];
@@ -230,6 +232,17 @@ function ProductPage() {
         return sorted;
     }, [filteredProducts, sortBy]);
 
+    // Pagination logic
+    const pageCount = Math.ceil(sortedProducts.length / pageSize);
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const currentItems = sortedProducts.slice(startIndex, endIndex);
+
+    const handlePageChange = (page) => {
+        setCurrentPage(page);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     const renderStars = (count, interactive = false, onRate = null) => (
         [...Array(5)].map((_, idx) => (
             <i
@@ -239,45 +252,6 @@ function ProductPage() {
             ></i>
         ))
     );
-
-    const paging = () => {
-        const pageSize = 8;
-        const pageCount = Math.ceil(sortedProducts.length / pageSize);
-        const [currentPage, setCurrentPage] = useState(1);
-        const startIndex = (currentPage - 1) * pageSize;
-        const endIndex = startIndex + pageSize;
-        const currentItems = sortedProducts.slice(startIndex, endIndex);
-    
-        const handlePageChange = (page) => {
-            setCurrentPage(page);
-        };
-    
-        return (
-            <div className="d-flex justify-content-center mt-4">
-                <nav aria-label="Page navigation">
-                    <ul className="pagination">
-                        <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                            <button className="page-link" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
-                                Previous
-                            </button>
-                        </li>
-                        {[...Array(pageCount)].map((_, index) => (
-                            <li key={index} className={`page-item ${currentPage === index + 1 ? 'active' : ''}`}>
-                                <button className="page-link" onClick={() => handlePageChange(index + 1)}>
-                                    {index + 1}
-                                </button>
-                            </li>
-                        ))}
-                        <li className={`page-item ${currentPage === pageCount ? 'disabled' : ''}`}>
-                            <button className="page-link" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === pageCount}>
-                                Next
-                            </button>
-                        </li>
-                    </ul>
-                </nav>
-            </div>
-        );
-    };
 
     const ProductCard = ({ product, isListView }) => (
         <div className={`col-${isListView ? '12' : 'sm-6 col-md-4 col-lg-3'} mb-4`}>
@@ -615,7 +589,7 @@ function ProductPage() {
                         </div>
                     </div>
                     <div className="text-muted small">
-                        Showing <strong>{sortedProducts.length}</strong> of <strong>{products.length}</strong> products
+                        Showing <strong>{currentItems.length}</strong> of <strong>{sortedProducts.length}</strong> products
                     </div>
                 </div>
             </div>
@@ -651,8 +625,8 @@ function ProductPage() {
 
             <div className="container">
                 <div className="row">
-                    {sortedProducts.length > 0 ? (
-                        sortedProducts.map(product => (
+                    {currentItems.length > 0 ? (
+                        currentItems.map(product => (
                             <ProductCard key={product.id} product={product} isListView={viewMode === 'list'} />
                         ))
                     ) : (
@@ -666,6 +640,33 @@ function ProductPage() {
                         </div>
                     )}
                 </div>
+
+                {/* Pagination Controls */}
+                {pageCount > 1 && (
+                    <div className="d-flex justify-content-center mt-4">
+                        <nav aria-label="Page navigation">
+                            <ul className="pagination">
+                                <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                                    <button className="page-link" onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>
+                                        Previous
+                                    </button>
+                                </li>
+                                {[...Array(pageCount)].map((_, index) => (
+                                    <li key={index} className={`page-item ${currentPage === index + 1 ? 'active' : ''}`}>
+                                        <button className="page-link" onClick={() => handlePageChange(index + 1)}>
+                                            {index + 1}
+                                        </button>
+                                    </li>
+                                ))}
+                                <li className={`page-item ${currentPage === pageCount ? 'disabled' : ''}`}>
+                                    <button className="page-link" onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === pageCount}>
+                                        Next
+                                    </button>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                )}
             </div>
 
             {quickView && (
@@ -969,7 +970,7 @@ function ProductPage() {
                     {wishlist.size > 0 && (
                         <button className="btn btn-danger rounded-circle position-relative" style={{ width: '50px', height: '50px' }}>
                             <i className="bi bi-heart-fill"></i>
-                            <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark">
+                            <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-white text-dark">
                                 {wishlist.size}
                             </span>
                         </button>
@@ -981,7 +982,7 @@ function ProductPage() {
                             onClick={() => setShowCompareModal(true)}
                         >
                             <i className="bi bi-arrow-left-right"></i>
-                            <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-warning text-dark">
+                            <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-white text-dark">
                                 {compare.size}
                             </span>
                         </button>
@@ -1005,7 +1006,7 @@ function ProductPage() {
                                 <small>Secure Payment</small>
                             </div>
                             <div className="col-4">
-                                <i className="bi bi-truck text-primary mb-2 d-block"></i>
+                                <i className="bi bi-truck text-primary mb-1 d-block"></i>
                                 <small>Fast Shipping</small>
                             </div>
                             <div className="col-4">
@@ -1023,8 +1024,8 @@ function ProductPage() {
                 }
                 .bg-pattern {
                     background-image: 
-                        radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 0%, transparent 50%),
-                        radial-gradient(circle at 75% 75%, rgba(255,255,255,0.1) 0%, transparent 50%);
+                        radial-gradient(circle at 25% 25%, rgba(255,255,255,0.1) 0%, transparent 25%),
+                        radial-gradient(circle at 75% 75%, rgba(255,255,255,0.1) 0%, transparent 25%);
                 }
                 .card:hover {
                     transform: translateY(-2px);
@@ -1036,11 +1037,14 @@ function ProductPage() {
                 .z-index-2 {
                     z-index: 2;
                 }
-                .form-check-label {
+                .form-check-label, .cursor-pointer {
                     cursor: pointer;
                 }
-                .cursor-pointer {
+                .pagination .page-link {
                     cursor: pointer;
+                }
+                .pagination .page-item.disabled .page-link {
+                    cursor: not-allowed;
                 }
                 @media (max-width: 768px) {
                     .col-md-2, .col-md-3, .col-md-4 {
