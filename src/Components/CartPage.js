@@ -172,7 +172,7 @@ function CartPage() {
 
     const addItem = async (item) => {
         try {
-            const response = await fetch('http://localhost:5000/api/cart', {
+            const response = await fetch('https://electrogadgets-backend.onrender.com/api/cart', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -191,7 +191,7 @@ function CartPage() {
 
     const updateQuantity = async (id, quantity) => {
         try {
-            const response = await fetch(`http://localhost:5000/api/cart/${id}`, {
+            const response = await fetch(`https://electrogadgets-backend.onrender.com/api/cart/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -210,7 +210,7 @@ function CartPage() {
 
     const removeItem = async (id, title = '') => {
         try {
-            const response = await fetch(`http://localhost:5000/api/cart/${id}`, {
+            const response = await fetch(`https://electrogadgets-backend.onrender.com/api/cart/${id}`, {
                 method: 'DELETE',
                 credentials: 'include',
             });
@@ -227,7 +227,7 @@ function CartPage() {
 
     const saveForLater = async (item) => {
         try {
-            const response = await fetch('http://localhost:5000/api/cart/save', {
+            const response = await fetch('https://electrogadgets-backend.onrender.com/api/cart/save', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -248,7 +248,7 @@ function CartPage() {
     const moveToCart = async (item) => {
         await addItem({ ...item, quantity: 1 });
         try {
-            const response = await fetch(`http://localhost:5000/api/cart/save/${item.id}`, {
+            const response = await fetch(`https://electrogadgets-backend.onrender.com/api/cart/save/${item.id}`, {
                 method: 'DELETE',
                 credentials: 'include',
             });
@@ -265,7 +265,7 @@ function CartPage() {
 
     const clearCart = async () => {
         try {
-            const response = await fetch('http://localhost:5000/api/cart', {
+            const response = await fetch('https://electrogadgets-backend.onrender.com/api/cart', {
                 method: 'DELETE',
                 credentials: 'include',
             });
