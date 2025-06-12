@@ -91,40 +91,58 @@ function CartPage() {
 
     // Fetch cart and saved items on mount
     useEffect(() => {
-        const fetchCart = async () => {
-            try {
-                const response = await fetch('https://electrogadgets-backend.onrender.com/api/cart', { credentials: 'include' });
-                if (!response.ok) throw new Error('Failed to fetch cart');
-                const cartData = await response.json();
-                dispatch({ type: 'SET_CART', payload: cartData.cart });
-            } catch (err) {
-                console.error('Error fetching cart:', err);
-                showToastMessage('Failed to load cart', 'error');
-            }
-        };
-        const fetchSavedItems = async () => {
-            try {
-                const response = await fetch('https://electrogadgets-backend.onrender.com/api/cart/saved', { credentials: 'include' });
-                if (!response.ok) throw new Error('Failed to fetch saved items');
-                const savedData = await response.json();
-                setSavedItems(savedData.savedItems);
-            } catch (err) {
-                console.error('Error fetching saved items:', err);
-                showToastMessage('Failed to load saved items', 'error');
-            }
-        };
-        const checkAuth = async () => {
-            try {
-                const response = await fetch('/api/user', { credentials: 'include' });
-                setIsAuthenticated(response.ok);
-            } catch (err) {
-                setIsAuthenticated(false);
-            }
-        };
-        checkAuth();
-        fetchCart();
-        fetchSavedItems();
-    }, [dispatch]);
+    const token = localStorage.getItem('token');
+
+    const fetchCart = async () => {
+        try {
+            const response = await fetch('https://electrogadgets-backend.onrender.com/api/cart', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (!response.ok) throw new Error('Failed to fetch cart');
+            const cartData = await response.json();
+            dispatch({ type: 'SET_CART', payload: cartData.cart });
+        } catch (err) {
+            console.error('Error fetching cart:', err);
+            showToastMessage('Failed to load cart', 'error');
+        }
+    };
+
+    const fetchSavedItems = async () => {
+        try {
+            const response = await fetch('https://electrogadgets-backend.onrender.com/api/cart/saved', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            if (!response.ok) throw new Error('Failed to fetch saved items');
+            const savedData = await response.json();
+            setSavedItems(savedData.savedItems);
+        } catch (err) {
+            console.error('Error fetching saved items:', err);
+            showToastMessage('Failed to load saved items', 'error');
+        }
+    };
+
+    const checkAuth = async () => {
+        try {
+            const response = await fetch('https://electrogadgets-backend.onrender.com/api/user', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            setIsAuthenticated(response.ok);
+        } catch (err) {
+            setIsAuthenticated(false);
+        }
+    };
+
+    checkAuth();
+    fetchCart();
+    fetchSavedItems();
+}, [dispatch]);
+
 
     // Initialize Bootstrap Toasts
     useEffect(() => {
