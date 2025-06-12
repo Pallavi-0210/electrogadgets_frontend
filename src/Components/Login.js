@@ -14,27 +14,25 @@ function Login() {
             const response = await fetch('https://electrogadgets-backend.onrender.com/api/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
                 body: JSON.stringify({ email, password })
             });
 
             const data = await response.json();
 
             if (!response.ok) {
-                setError(data.error);
+                setError(data.error || 'Login failed');
             } else {
-                localStorage.setItem('isLoggedIn', 'true');
+                // ✅ Save JWT to localStorage
+                localStorage.setItem('token', data.token);
                 setError('');
-                navigate('/'); // or to /Home
+                navigate('/'); // Redirect to home/dashboard
             }
 
         } catch (err) {
+            console.error(err);
             setError('Something went wrong. Please try again later.');
         }
     };
-
-
-
 
     return (
         <div className="container mt-5" style={{ maxWidth: '400px' }}>
