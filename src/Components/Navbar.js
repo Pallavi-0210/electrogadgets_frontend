@@ -3,11 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 
 function Navbar({ darkMode, setDarkMode }) {
     const navigate = useNavigate();
-    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+
+    // Check JWT token presence (you can also decode it to check expiry if needed)
+    const token = localStorage.getItem('token');
+    const isLoggedIn = !!token;
 
     const handleSignOut = () => {
-        localStorage.removeItem('isLoggedIn');
-        // Clear any other data if needed
+        localStorage.removeItem('token'); // ✅ Clear JWT
         navigate('/Login');
     };
 
@@ -15,7 +17,11 @@ function Navbar({ darkMode, setDarkMode }) {
         <nav className={`navbar navbar-expand-lg ${darkMode ? 'navbar-dark bg-dark' : 'navbar-light bg-light'} shadow-sm`}>
             <div className="container-fluid px-md-5">
                 <Link className="navbar-brand fw-bold" to="/">
-                    <img src="https://www.shutterstock.com/image-vector/electronics-text-assorted-devices-floating-260nw-2271252449.jpg" alt="ElectroGadgets Logo" width="30" height="30" className="d-inline-block align-text-top me-2" />
+                    <img src="https://www.shutterstock.com/image-vector/electronics-text-assorted-devices-floating-260nw-2271252449.jpg"
+                         alt="ElectroGadgets Logo"
+                         width="30"
+                         height="30"
+                         className="d-inline-block align-text-top me-2" />
                     ElectroGadgets
                 </Link>
                 <button
@@ -40,7 +46,6 @@ function Navbar({ darkMode, setDarkMode }) {
                         <li className="nav-item">
                             <Link className="nav-link" to="/CartPage">Cart</Link>
                         </li>
-
 
                         {isLoggedIn ? (
                             <li className="nav-item">
