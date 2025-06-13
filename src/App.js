@@ -15,6 +15,8 @@ import 'bootstrap-icons/font/bootstrap-icons.css';
 
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
+import 'bootstrap/dist/js/bootstrap.bundle.min.js';
+
 
 // Load your Stripe publishable key
 const stripePromise = loadStripe('pk_test_51RXLojQ5veLc9qfeK8Um23THsupUMQMDx0VHyfMqreJhHTUtYyJ6FF8TeyjtWkuXdkvaFimrCvniSJzGLgTvApBn00wICVWm57');
